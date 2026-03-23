@@ -1,7 +1,7 @@
 {
   "display_name": "True Hide",
   "name": "TrueHide",
-  "version": "1.0.0",
+  "version": "1.6.0",
   "author": "You",
   "js": "index.js",
   "description": "完美隐藏楼层，不卡顿，不闪烁"
