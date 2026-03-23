@@ -1,106 +1,57 @@
 (function() {
     'use strict';
+    if (window.self !== window.top) return;
 
-    // 1. 防止在 iframe 中重复执行
-    if (window.self !== window.top) {
-        return;
-    }
-
-    // ==========================================
-    // 【诊断工具】证明代码真的跑起来了！
-    // ==========================================
-    setTimeout(() => {
-        if (typeof toastr !== 'undefined') {
-            toastr.success('True Hide 插件已成功激活！', '系统提示');
-            console.log('[True Hide] 插件已成功运行！');
-        }
-    }, 3000); // 进网页 3 秒后弹出绿色提示框
-
-    // ==========================================
-    // 【防线一：静态 CSS 暴力隐藏】
-    // 涵盖了你找来的代码中的 is_system="true"，以及所有可能的隐藏类名
-    // ==========================================
-    let staticStyle = document.createElement('style');
-    staticStyle.textContent = `
-        /* 隐藏系统消息、隐藏消息、被标记的隐藏类 */
-        .mes[is_system="true"],
-        .mes[is_hidden="true"],
+    // 1. 第一道防线：基础 CSS 隐藏
+    const style = document.createElement('style');
+    style.textContent = `
+        .mes[is_hidden="true"], 
+        .mes[mes_hidden="true"], 
         .mes.mes_hidden,
-        .mes.sys-mes {
-            display: none !important;
-            visibility: hidden !important;
-            opacity: 0 !important;
-            height: 0 !important;
-            min-height: 0 !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            overflow: hidden !important;
-            position: absolute !important;
-            pointer-events: none !important;
-            z-index: -9999 !important;
-        }
-        /* 消除相邻隐藏消息的间距 */
-        .mes[is_system="true"] + .mes,
-        .mes[is_hidden="true"] + .mes {
-            margin-top: 0 !important;
+        .mes[is_system="true"] { 
+            display: none !important; 
         }
     `;
-    document.head.appendChild(staticStyle);
+    document.head.appendChild(style);
 
-    // ==========================================
-    // 【防线二：动态扫描底层数据】
-    // 无论酒馆怎么变，只要底层数据标记了隐藏，统统干掉
-    // ==========================================
-    let dynamicStyle = document.createElement('style');
-    document.head.appendChild(dynamicStyle);
-    let lastHiddenIds = "";
-
-    function updateHiddenCSS() {
+    // 2. 第二道防线：JS 强行抹除（无视任何版本差异和美化冲突）
+    function enforceHide() {
+        // 获取底层聊天数据
         let chatArray = null;
-        
-        // 获取聊天数据
         if (typeof SillyTavern !== 'undefined' && SillyTavern.getContext) {
             chatArray = SillyTavern.getContext().chat;
-        } else if (typeof chat !== 'undefined' && Array.isArray(chat)) {
+        } else if (typeof chat !== 'undefined') {
             chatArray = chat;
         }
+        if (!chatArray) return;
 
-        if (!chatArray || !Array.isArray(chatArray)) return;
-
-        const hiddenIds = [];
-        chatArray.forEach((msg, index) => {
-            // 只要满足任何一种隐藏条件（is_hidden 或 is_system），统统抓出来
-            if (msg.is_hidden === true || msg.is_system === true || msg.mes_hidden === true) {
-                hiddenIds.push(index);
+        // 遍历屏幕上的所有消息
+        document.querySelectorAll('.mes').forEach(el => {
+            const idStr = el.getAttribute('mesid') || el.getAttribute('data-mesid');
+            if (!idStr) return;
+            
+            const id = parseInt(idStr, 10);
+            const msg = chatArray[id];
+            
+            // 如果底层数据说它被隐藏了，强行让它消失！
+            if (msg && (msg.is_hidden === true || msg.is_system === true)) {
+                el.style.setProperty('display', 'none', 'important');
+            } else {
+                // 如果你用命令恢复了它，让它重新显示
+                if (el.style.display === 'none') {
+                    el.style.removeProperty('display');
+                }
             }
         });
-
-        const currentHiddenIds = hiddenIds.join(',');
-        if (currentHiddenIds !== lastHiddenIds) {
-            lastHiddenIds = currentHiddenIds;
-            
-            if (hiddenIds.length === 0) {
-                dynamicStyle.textContent = ''; 
-            } else {
-                const cssSelectors = hiddenIds.map(id => `#chat .mes[mesid="${id}"]`).join(',\n');
-                dynamicStyle.textContent = `${cssSelectors} { 
-                    display: none !important; 
-                    visibility: hidden !important;
-                    opacity: 0 !important;
-                    height: 0 !important;
-                    min-height: 0 !important;
-                    margin: 0 !important;
-                    padding: 0 !important;
-                    overflow: hidden !important;
-                    position: absolute !important;
-                    pointer-events: none !important;
-                    z-index: -9999 !important;
-                }`;
-            }
-        }
     }
 
-    // 每 500 毫秒扫描一次，确保万无一失
-    setInterval(updateHiddenCSS, 500);
+    // 3. 实时监控：只要聊天框有任何风吹草动，立刻执行抹除
+    const chatContainer = document.getElementById('chat');
+    if (chatContainer) {
+        new MutationObserver(enforceHide).observe(chatContainer, { childList: true, subtree: true });
+    }
+    
+    // 兜底：每半秒检查一次，确保万无一失
+    setInterval(enforceHide, 500);
 
 })();
