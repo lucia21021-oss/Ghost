@@ -1,11 +1,19 @@
-/* 使用你最初提供的、唯一真正适配你手机端版本的核心逻辑！ */
-/* 只要幽灵图标出现在名字、徽章或时间区域，说明它是被隐藏的楼层，立刻抹除！ */
-#chat .mes:has(.mes_name .fa-ghost),
-#chat .mes:has(.mes_badges .fa-ghost),
-#chat .mes:has(.mes_timestamp .fa-ghost) {
+/* 终极逻辑：只抓取“真正显示出来”的幽灵图标！ */
+/* 正常楼层的幽灵图标是 style="display: none;"，不会被匹配 */
+/* 隐藏楼层的幽灵图标会被酒馆改成 style="display: inline-block;"，瞬间触发抹除！ */
+
+html body #chat .mes:has(.fa-ghost[style*="inline"]),
+html body #chat .mes:has(.fa-ghost[style*="block"]),
+html body #chat .mes:has(.fa-ghost:not([style*="none"])) {
     display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    height: 0 !important;
+    min-height: 0 !important;
     margin: 0 !important;
     padding: 0 !important;
-    height: 0 !important;
-    overflow: hidden !important;
+    border: 0 !important;
+    position: absolute !important;
+    pointer-events: none !important;
+    z-index: -9999 !important;
 }
