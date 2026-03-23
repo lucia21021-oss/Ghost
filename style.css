@@ -1,15 +1,11 @@
-html body #chat .mes.mes_hidden,
-html body #chat .mes[is_hidden="true"],
-html body #chat .mes[data-is_hidden="true"] {
+/* 使用你最初提供的、唯一真正适配你手机端版本的核心逻辑！ */
+/* 只要幽灵图标出现在名字、徽章或时间区域，说明它是被隐藏的楼层，立刻抹除！ */
+#chat .mes:has(.mes_name .fa-ghost),
+#chat .mes:has(.mes_badges .fa-ghost),
+#chat .mes:has(.mes_timestamp .fa-ghost) {
     display: none !important;
-    visibility: hidden !important;
-    opacity: 0 !important;
-    height: 0 !important;
-    min-height: 0 !important;
     margin: 0 !important;
     padding: 0 !important;
-    border: 0 !important;
-    position: absolute !important;
-    pointer-events: none !important;
-    z-index: -9999 !important;
+    height: 0 !important;
+    overflow: hidden !important;
 }
