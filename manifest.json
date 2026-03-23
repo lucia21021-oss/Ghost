@@ -1,8 +1,8 @@
 {
   "display_name": "True Hide",
-  "name": "Ghost",
+  "name": "TrueHide",
   "version": "1.0.0",
-  "author": "YourName",
-  "css": "style.css",
-  "description": "纯净隐藏"
+  "author": "You",
+  "js": "index.js",
+  "description": "完美隐藏楼层，不卡顿，不闪烁"
 }
