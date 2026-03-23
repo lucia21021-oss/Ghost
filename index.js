@@ -1,21 +1,45 @@
-jQuery(() => {
-    // 1. 在网页大脑里植入一个专属的“黑洞”样式表
-    let styleEl = document.getElementById('ghost-hide-style');
+(function() {
+    'use strict';
+
+    // 1. 确保只在顶层窗口运行，避免在 iframe 中重复执行
+    if (window.self !== window.top) {
+        return;
+    }
+
+    // 2. 植入一个专属的“黑洞”样式表
+    let styleEl = document.getElementById('true-hide-style');
     if (!styleEl) {
         styleEl = document.createElement('style');
-        styleEl.id = 'ghost-hide-style';
+        styleEl.id = 'true-hide-style';
         document.head.appendChild(styleEl);
     }
 
     let lastHiddenIds = "";
 
-    // 2. 核心函数：查阅底层数据，动态生成 CSS
-    function updateHiddenCSS() {
-        if (typeof chat === 'undefined' || !Array.isArray(chat)) return;
+    // 3. 获取酒馆上下文的安全方法
+    function getContext() {
+        if (typeof SillyTavern === 'object' && SillyTavern.getContext) {
+            return SillyTavern.getContext();
+        }
+        return null;
+    }
 
-        // 找出所有被隐藏的楼层编号
+    // 4. 核心逻辑：读取底层数据，瞬间生成隐藏 CSS
+    function updateHiddenCSS() {
+        let chatArray = null;
+        const context = getContext();
+        
+        // 兼容不同的酒馆版本获取聊天数据
+        if (context && context.chat) {
+            chatArray = context.chat;
+        } else if (typeof chat !== 'undefined' && Array.isArray(chat)) {
+            chatArray = chat;
+        }
+
+        if (!chatArray || !Array.isArray(chatArray)) return;
+
         const hiddenIds = [];
-        chat.forEach((msg, index) => {
+        chatArray.forEach((msg, index) => {
             if (msg.is_hidden === true) {
                 hiddenIds.push(index);
             }
@@ -23,14 +47,14 @@ jQuery(() => {
 
         const currentHiddenIds = hiddenIds.join(',');
 
-        // 只有当隐藏列表发生变化时，才更新 CSS，消耗几乎为 0，绝对不卡顿！
+        // 只有隐藏状态改变时才更新，绝对不卡顿
         if (currentHiddenIds !== lastHiddenIds) {
             lastHiddenIds = currentHiddenIds;
             
             if (hiddenIds.length === 0) {
-                styleEl.textContent = ''; // 没有隐藏的楼层，清空样式
+                styleEl.textContent = ''; 
             } else {
-                // 精准生成 CSS 规则，例如：#chat .mes[mesid="14"]
+                // 精准生成 CSS，例如：#chat .mes[mesid="14"]
                 const cssSelectors = hiddenIds.map(id => `#chat .mes[mesid="${id}"]`).join(',\n');
                 styleEl.textContent = `${cssSelectors} { 
                     display: none !important; 
@@ -49,13 +73,29 @@ jQuery(() => {
         }
     }
 
-    // 3. 监听酒馆的原生事件（当你切换聊天、隐藏/恢复时，瞬间触发，绝不闪烁）
-    if (window.eventSource && window.event_types) {
-        window.eventSource.on(window.event_types.CHAT_CHANGED, updateHiddenCSS);
-        window.eventSource.on(window.event_types.MESSAGE_HIDDEN, updateHiddenCSS);
-        window.eventSource.on(window.event_types.MESSAGE_UNHIDDEN, updateHiddenCSS);
+    // 5. 初始化与事件绑定
+    function tryInit(retry = 0) {
+        try {
+            // 绑定酒馆原生事件：切换聊天、隐藏、取消隐藏时瞬间触发
+            if (window.eventSource && window.event_types) {
+                window.eventSource.on(window.event_types.CHAT_CHANGED, updateHiddenCSS);
+                window.eventSource.on(window.event_types.MESSAGE_HIDDEN, updateHiddenCSS);
+                window.eventSource.on(window.event_types.MESSAGE_UNHIDDEN, updateHiddenCSS);
+            }
+            
+            // 兜底检查：每 200 毫秒静默扫描一次数组（消耗极低，不卡顿）
+            setInterval(updateHiddenCSS, 200);
+            
+            console.log('[True Hide] 完美隐藏扩展加载成功！');
+        } catch (error) {
+            if (retry < 20) {
+                setTimeout(() => tryInit(retry + 1), 250);
+            } else {
+                console.error('[True Hide] 初始化失败:', error);
+            }
+        }
     }
 
-    // 4. 终极保险：每 200 毫秒静默检查一次（只比对一串数字，消耗 0.001 毫秒，绝对不卡）
-    setInterval(updateHiddenCSS, 200);
-});
+    // 启动！
+    tryInit();
+})();
